@@ -1,0 +1,56 @@
+===========================================
+QUICK STEPS TO ENABLE EMAIL AFTER BOOKING
+===========================================
+
+STEP 1: Get Gmail App Password
+--------------------------------
+1. Go to: https://myaccount.google.com/apppasswords
+2. If 2-Step Verification is not enabled, enable it first at:
+   https://myaccount.google.com/security
+3. Select "Mail" → "Other (Custom name)"
+4. Enter name: "Streamlit Booking"
+5. Click "Generate"
+6. Copy the 16-character password (looks like: abcd efgh ijkl mnop)
+
+STEP 2: Update .streamlit/secrets.toml
+----------------------------------------
+Replace this line:
+   EMAIL_PASSWORD = "sxvtmfqkcvffsztc"
+
+With your App Password (remove spaces):
+   EMAIL_PASSWORD = "abcdefghijklmnop"
+
+Example:
+   EMAIL_PASSWORD = "abcd efgh ijkl mnop"  ← Remove spaces when pasting
+   Becomes:
+   EMAIL_PASSWORD = "abcdefghijklmnop"
+
+STEP 3: For Streamlit Cloud Deployment
+---------------------------------------
+1. Go to your Streamlit Cloud app
+2. Click "Manage app" → "Settings" → "Secrets"
+3. Update EMAIL_PASSWORD with your App Password
+4. Make sure SMTP_SERVER = "smtp.gmail.com"
+
+STEP 4: Restart Your App
+-------------------------
+- If running locally: Stop and restart Streamlit
+- If on Streamlit Cloud: It will auto-redeploy
+
+STEP 5: Test
+------------
+1. Create a test booking
+2. Check for status message: "Confirmation email sent."
+3. Check your email inbox (and spam folder)
+
+===========================================
+TROUBLESHOOTING
+===========================================
+
+If email fails, check the error message in the app.
+Common issues:
+- "Authentication failed" → Wrong password or not using App Password
+- "Connection timeout" → Check internet/firewall
+- "SMTP configuration missing" → Secrets not set correctly
+
+===========================================

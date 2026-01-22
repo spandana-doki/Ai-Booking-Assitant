@@ -11,6 +11,7 @@ All tools handle their own errors and return structured dict responses.
 
 from __future__ import annotations
 
+import os
 import smtplib
 from email.message import EmailMessage
 from typing import Any, Dict, Iterable, Optional, Union
@@ -27,6 +28,13 @@ from config import (
     SMTP_USERNAME,
 )
 from rag_pipeline import answer_query as rag_answer_query
+
+# Try to import streamlit for secrets, but don't fail if not available
+try:
+    import streamlit as st
+    _HAS_STREAMLIT = True
+except ImportError:
+    _HAS_STREAMLIT = False
 
 
 def rag_tool(query: str, chat_history: Optional[Iterable[Dict[str, str]]] = None) -> Dict[str, Any]:
@@ -142,7 +150,7 @@ def booking_persistence_tool(booking: Union[BookingData, Dict[str, Any]]) -> Dic
 
 def email_tool(to_email: str, subject: str, body: str) -> Dict[str, Any]:
     """
-    Send an email using SMTP settings from configuration.
+    Send an email using SMTP settings from Streamlit secrets or configuration.
 
     Returns:
         {
@@ -150,18 +158,47 @@ def email_tool(to_email: str, subject: str, body: str) -> Dict[str, Any]:
             "error": str | None
         }
     """
+    # Try to get SMTP settings from Streamlit secrets first, fallback to config
+    smtp_host = SMTP_HOST
+    smtp_port = SMTP_PORT
+    smtp_username = SMTP_USERNAME
+    smtp_password = SMTP_PASSWORD
+    smtp_from_email = SMTP_FROM_EMAIL
+    smtp_use_tls = SMTP_USE_TLS
+
+    if _HAS_STREAMLIT:
+        try:
+            # Get secrets if available
+            secrets = st.secrets
+            smtp_host = secrets.get("SMTP_SERVER", SMTP_HOST)
+            smtp_port = int(secrets.get("SMTP_PORT", SMTP_PORT))
+            smtp_username = secrets.get("EMAIL_USER", SMTP_USERNAME)
+            smtp_password = secrets.get("EMAIL_PASSWORD", SMTP_PASSWORD)
+            # Use EMAIL_USER as FROM email if SMTP_FROM_EMAIL is not in secrets
+            smtp_from_email = secrets.get("EMAIL_USER", SMTP_FROM_EMAIL)
+        except Exception:
+            # If secrets are not available, use config defaults
+            pass
+
+    # Validate required settings
+    if smtp_host == "smtp.example.com" or not smtp_username or not smtp_password:
+        return {
+            "success": False,
+            "error": "SMTP configuration missing. Please set EMAIL_USER, EMAIL_PASSWORD, and SMTP_SERVER in Streamlit secrets.",
+        }
+
     message = EmailMessage()
-    message["From"] = SMTP_FROM_EMAIL
+    message["From"] = smtp_from_email
     message["To"] = to_email
     message["Subject"] = subject
     message.set_content(body)
 
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            if SMTP_USE_TLS:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+            if smtp_use_tls:
                 server.starttls()
-            if SMTP_USERNAME or SMTP_PASSWORD:
-                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            if smtp_username and smtp_password:
+                server.login(smtp_username, smtp_password)
             server.send_message(message)
         return {"success": True, "error": None}
     except Exception as exc:  # pragma: no cover - defensive

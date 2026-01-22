@@ -229,7 +229,7 @@ def handle_booking_flow(
             )
 
             return (
-                "Great, your booking is confirmed!",
+                "✅ Great! Your booking is confirmed!\n\nYour booking details have been saved and a confirmation email will be sent to you shortly.",
                 state,
                 payload,
             )

@@ -117,7 +117,7 @@ def _chat_page() -> None:
         st.markdown(user_text)
 
     # Delegate to chat logic
-    with st.spinner("Thinking..."):
+    with st.spinner("Processing..."):
         assistant_reply, booking_payload = handle_user_message(user_text)
 
     with st.chat_message("assistant"):
@@ -125,30 +125,39 @@ def _chat_page() -> None:
 
     # If booking confirmed, persist + email
     if booking_payload is not None:
+        # Show immediate confirmation
+        st.success("✅ Booking Confirmed! Processing your booking...")
         persist = booking_persistence_tool(booking_payload)
         if persist.get("success"):
             booking_id = persist.get("booking_id")
-            _push_status("success", f"Booking saved to database (booking_id={booking_id}).")
+            _push_status("success", f"✅ Booking saved successfully! (Booking ID: {booking_id})")
 
             # Send confirmation email (best-effort)
             email_res = email_tool(
                 to_email=booking_payload.email,
-                subject=f"Booking Confirmation (ID: {booking_id})",
+                subject=f"Booking Confirmation - ID: {booking_id}",
                 body=(
-                    "Your booking is confirmed.\n\n"
+                    "Your booking has been confirmed!\n\n"
+                    "Booking Details:\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Booking ID: {booking_id}\n"
                     f"Name: {booking_payload.name}\n"
                     f"Email: {booking_payload.email}\n"
                     f"Phone: {booking_payload.phone}\n"
-                    f"Type: {booking_payload.booking_type}\n"
+                    f"Service Type: {booking_payload.booking_type}\n"
                     f"Date: {booking_payload.date}\n"
-                    f"Time: {booking_payload.time}\n\n"
-                    "Thank you."
+                    f"Time: {booking_payload.time}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    "Thank you for your booking!\n\n"
+                    "If you need to make any changes, please contact us.\n"
                 ),
             )
             if email_res.get("success"):
-                _push_status("success", "Confirmation email sent.")
+                _push_status("success", f"📧 Confirmation email sent to {booking_payload.email}")
             else:
-                _push_status("warning", f"Booking saved, but email failed: {email_res.get('error')}")
+                error_msg = email_res.get('error', 'Unknown error')
+                _push_status("warning", f"⚠️ Booking saved, but email failed: {error_msg}")
+                _push_status("info", "💡 Please check your email inbox - the booking is still confirmed in our system.")
         else:
             _push_status("error", f"Booking confirmation received, but DB save failed: {persist.get('error')}")
 

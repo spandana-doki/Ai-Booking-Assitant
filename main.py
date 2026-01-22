@@ -159,6 +159,13 @@ def main() -> None:
     st.set_page_config(page_title=APP_NAME, layout="wide")
     _init_ui_state()
 
+    # Initialize database on startup
+    try:
+        from database import init_db
+        init_db()
+    except Exception as e:
+        _push_status("warning", f"Database initialization warning: {str(e)}")
+
     # Configure Gemini API key for downstream modules (no UI code outside main.py)
     try:
         api_key = st.secrets.get("GEMINI_API_KEY", "")
@@ -166,7 +173,10 @@ def main() -> None:
         api_key = ""
     if api_key:
         os.environ["GEMINI_API_KEY"] = str(api_key)
-        genai.configure(api_key=str(api_key))
+        try:
+            genai.configure(api_key=str(api_key))
+        except Exception as e:
+            _push_status("error", f"Failed to configure Gemini API: {str(e)}")
     else:
         _push_status(
             "error",
@@ -177,14 +187,24 @@ def main() -> None:
         st.header(APP_NAME)
         page = st.radio("Navigate", options=["Chat", "Admin Dashboard"], index=0)
 
-    if page == "Admin Dashboard":
-        render_admin_dashboard()
-    else:
-        _chat_page()
+    try:
+        if page == "Admin Dashboard":
+            render_admin_dashboard()
+        else:
+            _chat_page()
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
+        st.exception(e)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        # Fallback error display if main() fails
+        import traceback
+        st.error(f"Critical error: {str(e)}")
+        st.code(traceback.format_exc())
 
 
 
